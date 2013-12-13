@@ -506,4 +506,41 @@ struct external_pex64_scope_entry
   (PEX64_OFFSET_TO_SCOPE_COUNT(COUNTOFUNWINDCODES) + \
    PEX64_SCOPE_ENTRY_SIZE * (IDX))
 
+/* Extra structure used in debug directory */
+struct external_IMAGE_DEBUG_DIRECTORY {
+  char Characteristics[4];
+  char TimeDateStamp[4];
+  char MajorVersion[2];
+  char MinorVersion[2];
+  char Type[4];
+  char SizeOfData[4];
+  char AddressOfRawData[4];
+  char PointerToRawData[4];
+};
+
+/* Extra structures used in codeview debug record */
+/* This is not part of the PE specification */
+
+#define CVINFO_PDB70_CVSIGNATURE 0x53445352 // "RSDS"
+#define CVINFO_PDB20_CVSIGNATURE 0x3031424e // "NB10"
+#define CVINFO_CV50_CVSIGNATURE  0x3131424e // "NB11"
+#define CVINFO_CV41_CVSIGNATURE  0x3930424e // “NB09"
+
+typedef struct _CV_INFO_PDB70
+{
+  char CvSignature[4];
+  char Signature[16];
+  char Age[4];
+  char PdbFileName[];
+} CV_INFO_PDB70;
+
+typedef struct _CV_INFO_PDB20
+{
+  char CvHeader[4];
+  char Offset[4];
+  char Signature[4];
+  char Age[4];
+  char PdbFileName[];
+} CV_INFO_PDB20;
+
 #endif /* _PE_H */

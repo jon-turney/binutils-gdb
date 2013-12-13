@@ -133,6 +133,43 @@ typedef struct _IMAGE_DATA_DIRECTORY
 /* DataDirectory[15] is currently reserved, so no define. */
 #define IMAGE_NUMBEROF_DIRECTORY_ENTRIES  16
 
+/* Extra structure used in debug directory */
+struct internal_IMAGE_DEBUG_DIRECTORY {
+  unsigned long  Characteristics;
+  unsigned long  TimeDateStamp;
+  unsigned short MajorVersion;
+  unsigned short MinorVersion;
+  unsigned long  Type;
+  unsigned long  SizeOfData;
+  unsigned long  AddressOfRawData;
+  unsigned long  PointerToRawData;
+};
+
+#define PE_IMAGE_DEBUG_TYPE_UNKNOWN          0
+#define PE_IMAGE_DEBUG_TYPE_COFF             1
+#define PE_IMAGE_DEBUG_TYPE_CODEVIEW         2
+#define PE_IMAGE_DEBUG_TYPE_FPO              3
+#define PE_IMAGE_DEBUG_TYPE_MISC             4
+#define PE_IMAGE_DEBUG_TYPE_EXCEPTION        5
+#define PE_IMAGE_DEBUG_TYPE_FIXUP            6
+#define PE_IMAGE_DEBUG_TYPE_OMAP_TO_SRC      7
+#define PE_IMAGE_DEBUG_TYPE_OMAP_FROM_SRC    8
+#define PE_IMAGE_DEBUG_TYPE_BORLAND          9
+#define PE_IMAGE_DEBUG_TYPE_RESERVED10       10
+#define PE_IMAGE_DEBUG_TYPE_CLSID            11
+
+/* Extra structure for a codeview debug record */
+#define CV_INFO_SIGNATURE_LENGTH 16
+
+typedef struct _CODEVIEW_INFO
+{
+  unsigned long CVSignature;
+  char          Signature[CV_INFO_SIGNATURE_LENGTH];
+  unsigned int  SignatureLength;
+  unsigned long Age;
+  // char PdbFileName[];
+} CODEVIEW_INFO;
+
 /* Default image base for NT.  */
 #define NT_EXE_IMAGE_BASE 0x400000
 #define NT_DLL_IMAGE_BASE 0x10000000

@@ -1031,6 +1031,105 @@ _bfd_XXi_swap_scnhdr_out (bfd * abfd, void * in, void * out)
   return ret;
 }
 
+void
+_bfd_XXi_swap_debugdir_in (bfd * abfd, void * ext1, void * in1)
+{
+  struct external_IMAGE_DEBUG_DIRECTORY *ext = (struct external_IMAGE_DEBUG_DIRECTORY *) ext1;
+  struct internal_IMAGE_DEBUG_DIRECTORY *in = (struct internal_IMAGE_DEBUG_DIRECTORY *) in1;
+
+  in->Characteristics = H_GET_32(abfd, ext->Characteristics);
+  in->TimeDateStamp = H_GET_32(abfd, ext->TimeDateStamp);
+  in->MajorVersion = H_GET_16(abfd, ext->MajorVersion);
+  in->MinorVersion = H_GET_16(abfd, ext->MinorVersion);
+  in->Type = H_GET_32(abfd, ext->Type);
+  in->SizeOfData = H_GET_32(abfd, ext->SizeOfData);
+  in->AddressOfRawData = H_GET_32(abfd, ext->AddressOfRawData);
+  in->PointerToRawData = H_GET_32(abfd, ext->PointerToRawData);
+}
+
+unsigned int
+_bfd_XXi_swap_debugdir_out (bfd * abfd, void * inp, void * extp)
+{
+  struct external_IMAGE_DEBUG_DIRECTORY *ext = (struct external_IMAGE_DEBUG_DIRECTORY *) extp;
+  struct internal_IMAGE_DEBUG_DIRECTORY *in = (struct internal_IMAGE_DEBUG_DIRECTORY *) inp;
+
+  H_PUT_32(abfd, in->Characteristics, ext->Characteristics);
+  H_PUT_32(abfd, in->TimeDateStamp, ext->TimeDateStamp);
+  H_PUT_16(abfd, in->MajorVersion, ext->MajorVersion);
+  H_PUT_16(abfd, in->MinorVersion, ext->MinorVersion);
+  H_PUT_32(abfd, in->Type, ext->Type);
+  H_PUT_32(abfd, in->SizeOfData, ext->SizeOfData);
+  H_PUT_32(abfd, in->AddressOfRawData, ext->AddressOfRawData);
+  H_PUT_32(abfd, in->PointerToRawData, ext->PointerToRawData);
+
+  return sizeof(struct external_IMAGE_DEBUG_DIRECTORY);
+}
+
+static CODEVIEW_INFO *
+_bfd_XXi_slurp_codeview_record (bfd * abfd, file_ptr where, unsigned long length, CODEVIEW_INFO *cvinfo)
+{
+  char buffer[256+1];
+
+  if (bfd_seek (abfd, where, SEEK_SET) != 0)
+    return NULL;
+
+  if (bfd_bread (buffer, 256, abfd) < 4)
+    return NULL;
+
+  /* ensure null termination of filename */
+  buffer[256] = '\0';
+
+  cvinfo->CVSignature = H_GET_32(abfd, buffer);
+  cvinfo->Age = 0;
+
+  if ((cvinfo->CVSignature == CVINFO_PDB70_CVSIGNATURE)
+      && (length > sizeof(CV_INFO_PDB70)))
+    {
+      CV_INFO_PDB70 *cvinfo70 = (CV_INFO_PDB70 *)(buffer);
+
+      cvinfo->Age = H_GET_32(abfd, cvinfo70->Age);
+      memcpy(cvinfo->Signature, cvinfo70->Signature, CV_INFO_SIGNATURE_LENGTH);
+      cvinfo->SignatureLength = CV_INFO_SIGNATURE_LENGTH;
+      // cvinfo->PdbFileName = cvinfo70->PdbFileName;
+
+      return cvinfo;
+    }
+  else if ((cvinfo->CVSignature == CVINFO_PDB20_CVSIGNATURE)
+           && (length > sizeof(CV_INFO_PDB20)))
+    {
+      CV_INFO_PDB20 *cvinfo20 = (CV_INFO_PDB20 *)(buffer);
+      cvinfo->Age = H_GET_32(abfd, cvinfo20->Age);
+      memcpy(cvinfo->Signature, cvinfo20->Signature, 4);
+      cvinfo->SignatureLength = 4;
+      // cvinfo->PdbFileName = cvinfo20->PdbFileName;
+
+      return cvinfo;
+    }
+
+  return NULL;
+}
+
+unsigned int
+_bfd_XXi_write_codeview_record(bfd * abfd, file_ptr where, CODEVIEW_INFO *cvinfo)
+{
+  unsigned int size = sizeof(CV_INFO_PDB70) + 1;
+  char buffer[size];
+
+  if (bfd_seek (abfd, where, SEEK_SET) != 0)
+    return 0;
+
+  CV_INFO_PDB70 *cvinfo70 = (CV_INFO_PDB70 *)buffer;
+  H_PUT_32(abfd, CVINFO_PDB70_CVSIGNATURE, cvinfo70->CvSignature);
+  memcpy(&(cvinfo70->Signature), cvinfo->Signature, CV_INFO_SIGNATURE_LENGTH);
+  H_PUT_32(abfd, cvinfo->Age, cvinfo70->Age);
+  cvinfo70->PdbFileName[0] = '\0';
+
+  if (bfd_bwrite (buffer, size, abfd) != size)
+    return 0;
+
+  return size;
+}
+
 static char * dir_names[IMAGE_NUMBEROF_DIRECTORY_ENTRIES] =
 {
   N_("Export Directory [.edata (or where ever we found it)]"),
