@@ -2324,6 +2324,115 @@ rsrc_print_section (bfd * abfd, void * vfile)
   return TRUE;
 }
 
+#define IMAGE_NUMBEROF_DEBUG_TYPES 12
+
+static char * debug_type_names[IMAGE_NUMBEROF_DEBUG_TYPES] =
+{
+  "Unknown",
+  "COFF",
+  "CodeView",
+  "FPO",
+  "Misc",
+  "Exception",
+  "Fixup",
+  "OMAP-to-SRC",
+  "OMAP-from-SRC",
+  "Borland",
+  "Reserved",
+  "CLSID",
+};
+
+static bfd_boolean
+pe_print_debugdata(bfd * abfd, void * vfile)
+{
+  FILE *file = (FILE *) vfile;
+  pe_data_type *pe = pe_data (abfd);
+  struct internal_extra_pe_aouthdr *extra = &pe->pe_opthdr;
+  asection *section;
+  bfd_byte *data = 0;
+  bfd_size_type dataoff;
+  unsigned int i;
+
+  bfd_vma addr = extra->DataDirectory[PE_DEBUG_DATA].VirtualAddress;
+  bfd_size_type size = extra->DataDirectory[PE_DEBUG_DATA].Size;
+
+  if (size == 0)
+    return TRUE;
+
+  addr += extra->ImageBase;
+  for (section = abfd->sections; section != NULL; section = section->next)
+    {
+      if ((addr >= section->vma) && (addr < (section->vma + section->size)))
+        break;
+    }
+
+  if (section == NULL)
+    {
+      fprintf (file,
+               _("\nThere is a debug directory, but the section containing it could not be found\n"));
+      return TRUE;
+    }
+
+  fprintf (file, _("\nThere is a debug directory in %s at 0x%lx\n\n"),
+	   section->name, (unsigned long) addr);
+
+  dataoff = addr - section->vma;
+
+  fprintf (file,
+	   _("Type                Size     Rva      Offset\n"));
+
+  /* Read the whole section. */
+  if (!bfd_malloc_and_get_section (abfd, section, &data))
+    {
+      if (data != NULL)
+	free (data);
+      return FALSE;
+    }
+
+  for (i = 0; i < size/sizeof(struct external_IMAGE_DEBUG_DIRECTORY); i++)
+    {
+      const char *type_name;
+      struct external_IMAGE_DEBUG_DIRECTORY *ext = &((struct external_IMAGE_DEBUG_DIRECTORY *)(data + dataoff))[i];
+      struct internal_IMAGE_DEBUG_DIRECTORY idd;
+
+      _bfd_XXi_swap_debugdir_in(abfd, ext, &idd);
+
+      if ((idd.Type) > IMAGE_NUMBEROF_DEBUG_TYPES)
+        type_name = debug_type_names[0];
+      else
+        type_name = debug_type_names[idd.Type];
+
+      fprintf(file, " %2ld  %14s %08lx %08lx %08lx\n", idd.Type, type_name, idd.SizeOfData, idd.AddressOfRawData, idd.PointerToRawData);
+
+      if (idd.Type == PE_IMAGE_DEBUG_TYPE_CODEVIEW)
+        {
+          char signature[CV_INFO_SIGNATURE_LENGTH*2+1];
+          char buffer[256+1];
+          CODEVIEW_INFO *cvinfo = (CODEVIEW_INFO *)buffer;
+
+          /*
+            The debug entry doesn't have to have to be in a section,
+            in which case AddressOfRawData is 0, so always use PointerToRawData
+          */
+          if (!_bfd_XXi_slurp_codeview_record(abfd, (file_ptr) idd.PointerToRawData, idd.SizeOfData, cvinfo))
+            continue;
+
+          for (i = 0; i < cvinfo->SignatureLength; i++)
+            sprintf(&signature[i*2], "%02x", cvinfo->Signature[i] & 0xff);
+
+          fprintf(file, "(format %c%c%c%c signature %s age %ld)\n",
+                  buffer[0], buffer[1], buffer[2], buffer[3],
+                  signature, cvinfo->Age);
+        }
+    }
+
+  if (size % sizeof(struct external_IMAGE_DEBUG_DIRECTORY) != 0)
+    fprintf(file,
+            _("The debug directory size is not a multiple of the debug directory entry size\n"));
+
+  return TRUE;
+}
+
 /* Print out the program headers.  */
 
 bfd_boolean
@@ -2497,6 +2606,7 @@ _bfd_XX_print_private_bfd_data_common (bfd * abfd, void * vfile)
   else
     pe_print_pdata (abfd, vfile);
   pe_print_reloc (abfd, vfile);
+  pe_print_debugdata (abfd, file);
 
   rsrc_print_section (abfd, vfile);
 
