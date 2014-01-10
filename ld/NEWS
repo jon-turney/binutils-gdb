@@ -1,5 +1,7 @@
 -*- text -*-
 
+* x86/x86_64 pe-coff now supports the --build-id option.
+
 * Add support for the Andes NDS32.
 
 Changes in 2.24:
