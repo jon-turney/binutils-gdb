@@ -2620,6 +2620,25 @@ _bfd_XX_print_private_bfd_data_common (bfd * abfd, void * vfile)
   return TRUE;
 }
 
+static
+asection *find_section_by_vma(bfd *abfd, bfd_vma addr)
+{
+  // write using bfd_sections_find_if()
+  asection *section;
+
+  for (section = abfd->sections; section != NULL; section = section->next)
+    {
+      if ((addr >= section->vma) && (addr < (section->vma + section->size)))
+        {
+          printf("vma %x found in section %s\n", (unsigned int)addr, section->name);
+          return section;
+        }
+    }
+
+  printf("vma %x not found in any section\n", (unsigned int)addr);
+  return NULL;
+}
+
 /* Copy any private info we understand from the input bfd
    to the output bfd.  */
 
@@ -2657,6 +2676,48 @@ _bfd_XX_bfd_copy_private_bfd_data_common (bfd * ibfd, bfd * obfd)
   if (! pe_data (ibfd)->has_reloc_section
       && ! (pe_data (ibfd)->real_flags & IMAGE_FILE_RELOCS_STRIPPED))
     pe_data (obfd)->dont_strip_reloc = 1;
+
+  /* The file offsets contained in the debug directory need rewriting */
+  if (ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].Size != 0)
+    {
+      bfd_vma ib = ope->pe_opthdr.ImageBase;
+      bfd_vma addr = ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].VirtualAddress + ib;
+      bfd_size_type size = ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].Size;
+
+      asection *section = find_section_by_vma(obfd, addr);
+      bfd_byte *data;
+
+      if (section && bfd_malloc_and_get_section (obfd, section, &data))
+        {
+          unsigned int i;
+          for (i = 0; i < size/sizeof(struct external_IMAGE_DEBUG_DIRECTORY); i++)
+            {
+              bfd_byte *dd_data = data + (addr - section->vma);
+              struct external_IMAGE_DEBUG_DIRECTORY *edd = &((struct external_IMAGE_DEBUG_DIRECTORY *)(dd_data))[i];
+              struct internal_IMAGE_DEBUG_DIRECTORY idd;
+
+              _bfd_XXi_swap_debugdir_in(obfd, edd, &idd);
+              printf("before: rva %x, offset %x\n", (unsigned int)idd.AddressOfRawData, (unsigned int)idd.PointerToRawData);
+
+              if (idd.AddressOfRawData == 0)
+                continue; /* RVA 0 means only offset is valid, not handled yet */
+
+              asection *ddsection = find_section_by_vma(obfd, idd.AddressOfRawData + ib);
+              if (!ddsection)
+                continue; /* Not in a section! */
+
+              bfd_size_type offset = (idd.AddressOfRawData + ib) - ddsection->vma;
+              idd.PointerToRawData = ddsection->filepos + offset;
+
+              printf("after: rva %x, offset %x\n", (unsigned int)idd.AddressOfRawData, (unsigned int)idd.PointerToRawData);
+
+              _bfd_XXi_swap_debugdir_out(obfd, &idd, edd);
+            }
+
+          if (!bfd_set_section_contents(obfd, section, data, 0, section->size))
+            printf("bfd_set_section_contents failed to rewrite debug directory\n");
+        }
+    }
 
   return TRUE;
 }
