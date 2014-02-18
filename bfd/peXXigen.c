@@ -2435,7 +2435,20 @@ pe_print_debugdata (bfd * abfd, void * vfile)
 					       idd.SizeOfData, cvinfo))
             continue;
 
-          for (i = 0; i < cvinfo->SignatureLength; i++)
+          /* The standard way to display a GUID seems to be as 4,2,2 bytes in
+             host order, followed by 8 single bytes, which we adopt for
+             consistency with other tools.  Display non-GUID signatures as a
+             sequence of bytes. */
+          i = 0;
+          if (cvinfo->SignatureLength >= CV_INFO_SIGNATURE_LENGTH)
+            {
+              char *guid = &(cvinfo->Signature[0]);
+              sprintf (signature, "%08x", *(uint32_t *)(guid));
+              sprintf (signature + 8, "%04x", *(uint16_t *)(guid + 4));
+              sprintf (signature + 12, "%04x", *(uint16_t *)(guid + 6));
+              i = 8;
+            }
+          for (; i < cvinfo->SignatureLength; i++)
             sprintf (&signature[i*2], "%02x", cvinfo->Signature[i] & 0xff);
 
           fprintf (file, "(format %c%c%c%c signature %s age %ld)\n",
