@@ -2403,6 +2403,13 @@ pe_print_debugdata (bfd * abfd, void * vfile)
                _("\nThere is a debug directory, but the section containing it could not be found\n"));
       return TRUE;
     }
+  else if (!(section->flags & SEC_HAS_CONTENTS))
+    {
+      fprintf (file,
+               _("\nThere is a debug directory in %s, but that section has no contents\n"),
+               section->name);
+      return TRUE;
+    }
 
   fprintf (file, _("\nThere is a debug directory in %s at 0x%lx\n\n"),
 	   section->name, (unsigned long) addr);
