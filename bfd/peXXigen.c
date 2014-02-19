@@ -1210,6 +1210,14 @@ pe_print_idata (bfd * abfd, void * vfile)
 		   _("\nThere is an import table, but the section containing it could not be found\n"));
 	  return TRUE;
 	}
+
+      if (!(section->flags & SEC_HAS_CONTENTS))
+        {
+	  fprintf (file,
+		   _("\nThere is an import table in %s, but that section has no contents\n"),
+		   section->name);
+	  return TRUE;
+        }
     }
 
   fprintf (file, _("\nThere is an import table in %s at 0x%lx\n"),
@@ -1522,6 +1530,14 @@ pe_print_edata (bfd * abfd, void * vfile)
 		   _("\nThere is an export table, but the section containing it could not be found\n"));
 	  return TRUE;
 	}
+
+      if (!(section->flags & SEC_HAS_CONTENTS))
+        {
+	  fprintf (file,
+		   _("\nThere is an export table in %s, but that section has no contents\n"),
+		   section->name);
+	  return TRUE;
+        }
 
       dataoff = addr - section->vma;
       datasize = extra->DataDirectory[PE_EXPORT_TABLE].Size;
@@ -2032,6 +2048,9 @@ pe_print_reloc (bfd * abfd, void * vfile)
   if (section->size == 0)
     return TRUE;
 
+  if (!(section->flags & SEC_HAS_CONTENTS))
+    return TRUE;
+
   fprintf (file,
 	   _("\n\nPE File Base Relocations (interpreted .reloc section contents)\n"));
 
@@ -2280,6 +2299,9 @@ rsrc_print_section (bfd * abfd, void * vfile)
   if (datasize == 0)
     return TRUE;
 
+  if (!(section->flags & SEC_HAS_CONTENTS))
+    return TRUE;
+
   if (! bfd_malloc_and_get_section (abfd, section, & data))
     {
       if (data != NULL)
@@ -2370,6 +2392,14 @@ pe_print_debugdata(bfd * abfd, void * vfile)
     {
       fprintf (file,
                _("\nThere is a debug directory, but the section containing it could not be found\n"));
+      return TRUE;
+    }
+
+  if (!(section->flags & SEC_HAS_CONTENTS))
+    {
+      fprintf (file,
+               _("\nThere is debug directory in %s, but that section has no contents\n"),
+               section->name);
       return TRUE;
     }
 
