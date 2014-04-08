@@ -2638,6 +2638,19 @@ _bfd_XX_print_private_bfd_data_common (bfd * abfd, void * vfile)
   return TRUE;
 }
 
+static bfd_boolean
+is_vma_in_section (bfd *abfd ATTRIBUTE_UNUSED, asection *sect, void *obj)
+{
+  bfd_vma addr = *(bfd_vma *)obj;
+  return (addr >= sect->vma) && (addr < (sect->vma + sect->size));
+}
+
+static asection *
+find_section_by_vma (bfd *abfd, bfd_vma addr)
+{
+  return bfd_sections_find_if (abfd, is_vma_in_section, (void *)&addr);
+}
+
 /* Copy any private info we understand from the input bfd
    to the output bfd.  */
 
@@ -2675,6 +2688,43 @@ _bfd_XX_bfd_copy_private_bfd_data_common (bfd * ibfd, bfd * obfd)
   if (! pe_data (ibfd)->has_reloc_section
       && ! (pe_data (ibfd)->real_flags & IMAGE_FILE_RELOCS_STRIPPED))
     pe_data (obfd)->dont_strip_reloc = 1;
+
+  /* The file offsets contained in the debug directory need rewriting. */
+  if (ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].Size != 0)
+    {
+      bfd_vma addr = ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].VirtualAddress + ope->pe_opthdr.ImageBase;
+      asection *section = find_section_by_vma (obfd, addr);
+      bfd_byte *data;
+
+      if (section && bfd_malloc_and_get_section (obfd, section, &data))
+        {
+          unsigned int i;
+          struct external_IMAGE_DEBUG_DIRECTORY *dd = (struct external_IMAGE_DEBUG_DIRECTORY *)(data + (addr - section->vma));
+
+          for (i = 0; i < ope->pe_opthdr.DataDirectory[PE_DEBUG_DATA].Size/sizeof (struct external_IMAGE_DEBUG_DIRECTORY); i++)
+            {
+              asection *ddsection;
+              struct external_IMAGE_DEBUG_DIRECTORY *edd = &(dd[i]);
+              struct internal_IMAGE_DEBUG_DIRECTORY idd;
+
+              _bfd_XXi_swap_debugdir_in (obfd, edd, &idd);
+
+              if (idd.AddressOfRawData == 0)
+                continue; /* RVA 0 means only offset is valid, not handled yet. */
+
+              ddsection = find_section_by_vma (obfd, idd.AddressOfRawData + ope->pe_opthdr.ImageBase);
+              if (!ddsection)
+                continue; /* Not in a section! */
+
+              idd.PointerToRawData = ddsection->filepos + (idd.AddressOfRawData + ope->pe_opthdr.ImageBase) - ddsection->vma;
+
+              _bfd_XXi_swap_debugdir_out (obfd, &idd, edd);
+            }
+
+          if (!bfd_set_section_contents (obfd, section, data, 0, section->size))
+            _bfd_error_handler (_("Failed to update file offsets in debug directory"));
+        }
+    }
 
   return TRUE;
 }
