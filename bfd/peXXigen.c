@@ -2663,7 +2663,14 @@ is_vma_in_section (bfd *abfd ATTRIBUTE_UNUSED, asection *sect, void *obj)
 static asection *
 find_section_by_vma (bfd *abfd, bfd_vma addr)
 {
-  return bfd_sections_find_if (abfd, is_vma_in_section, (void *)&addr);
+  asection *section = bfd_sections_find_if (abfd, is_vma_in_section, (void *)&addr);
+
+  if (section)
+    printf("vma %x found in section %s\n", (unsigned int)addr, section->name);
+  else
+    printf("vma %x not found in any section\n", (unsigned int)addr);
+
+  return section;
 }
 
 /* Copy any private info we understand from the input bfd
@@ -2723,6 +2730,7 @@ _bfd_XX_bfd_copy_private_bfd_data_common (bfd * ibfd, bfd * obfd)
               struct internal_IMAGE_DEBUG_DIRECTORY idd;
 
               _bfd_XXi_swap_debugdir_in (obfd, edd, &idd);
+              printf("before: rva %x, offset %x\n", (unsigned int)idd.AddressOfRawData, (unsigned int)idd.PointerToRawData);
 
               if (idd.AddressOfRawData == 0)
                 continue; /* RVA 0 means only offset is valid, not handled yet. */
@@ -2733,7 +2741,10 @@ _bfd_XX_bfd_copy_private_bfd_data_common (bfd * ibfd, bfd * obfd)
 
               idd.PointerToRawData = ddsection->filepos + (idd.AddressOfRawData + ope->pe_opthdr.ImageBase) - ddsection->vma;
 
+              printf("after: rva %x, offset %x\n", (unsigned int)idd.AddressOfRawData, (unsigned int)idd.PointerToRawData);
+
               _bfd_XXi_swap_debugdir_out (obfd, &idd, edd);
+
             }
 
           if (!bfd_set_section_contents (obfd, section, data, 0, section->size))

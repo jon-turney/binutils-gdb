@@ -1255,8 +1255,10 @@ write_build_id (bfd *abfd)
       struct bfd_link_order *l = NULL;
       for (l = asec->map_head.link_order; l != NULL; l = l->next)
         {
+          printf("link_order %p, offset %p, size %zx\n", l, (void *)l->offset, l->size);
           if ((l->type == bfd_indirect_link_order))
             {
+              printf("input section %p, %s\n", l->u.indirect.section, l->u.indirect.section->name);
               if (l->u.indirect.section == t->build_id.sec)
                 {
                   link_order = l;
@@ -1331,6 +1333,7 @@ write_build_id (bfd *abfd)
     = asec->vma  - ib + link_order->offset;
   pe_data (link_info.output_bfd)->pe_opthdr.DataDirectory[PE_DEBUG_DATA].Size
     = sizeof (struct external_IMAGE_DEBUG_DIRECTORY);
+  printf("DEBUG_DATA: filepos %p, offset %p\n", (void *)asec->filepos, (void *)link_order->offset);
 
   return TRUE;
 }
@@ -1364,6 +1367,8 @@ setup_build_id (bfd *ibfd)
 	 null byte for PdbFileName.  */
       s->size = sizeof (struct external_IMAGE_DEBUG_DIRECTORY)
 	+ sizeof (CV_INFO_PDB70) + 1;
+
+      printf("build-id section %p\n", s);
 
       return TRUE;
     }
