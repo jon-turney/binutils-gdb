@@ -1088,7 +1088,15 @@ _bfd_XXi_slurp_codeview_record (bfd * abfd, file_ptr where, unsigned long length
       CV_INFO_PDB70 *cvinfo70 = (CV_INFO_PDB70 *)(buffer);
 
       cvinfo->Age = H_GET_32(abfd, cvinfo70->Age);
-      memcpy (cvinfo->Signature, cvinfo70->Signature, CV_INFO_SIGNATURE_LENGTH);
+
+      /* A GUID consists of 4,2,2 byte values in little-endian order, followed
+         by 8 single bytes. Byte swap then so we can conveniently treat the GUID
+         as 16 bytes in big-endian order. */
+      bfd_putb32 (bfd_getl32 (cvinfo70->Signature), cvinfo->Signature);
+      bfd_putb16 (bfd_getl16 (&(cvinfo70->Signature[4])), &(cvinfo->Signature[4]));
+      bfd_putb16 (bfd_getl16 (&(cvinfo70->Signature[6])), &(cvinfo->Signature[6]));
+      memcpy (&(cvinfo->Signature[8]), &(cvinfo70->Signature[8]), 8);
+
       cvinfo->SignatureLength = CV_INFO_SIGNATURE_LENGTH;
       // cvinfo->PdbFileName = cvinfo70->PdbFileName;
 
@@ -1121,7 +1129,14 @@ _bfd_XXi_write_codeview_record (bfd * abfd, file_ptr where, CODEVIEW_INFO *cvinf
 
   cvinfo70 = (CV_INFO_PDB70 *) buffer;
   H_PUT_32 (abfd, CVINFO_PDB70_CVSIGNATURE, cvinfo70->CvSignature);
-  memcpy (&(cvinfo70->Signature), cvinfo->Signature, CV_INFO_SIGNATURE_LENGTH);
+
+  /* Byte swap the GUID from 16 bytes in big-endian order to 4,2,2 byte values
+     in little-endian order, followed by 8 single bytes. */
+  bfd_putl32 (bfd_getb32 (cvinfo->Signature), cvinfo70->Signature);
+  bfd_putl16 (bfd_getb16 (&(cvinfo->Signature[4])), &(cvinfo70->Signature[4]));
+  bfd_putl16 (bfd_getb16 (&(cvinfo->Signature[6])), &(cvinfo70->Signature[6]));
+  memcpy (&(cvinfo70->Signature[8]), &(cvinfo->Signature[8]), 8);
+
   H_PUT_32 (abfd, cvinfo->Age, cvinfo70->Age);
   cvinfo70->PdbFileName[0] = '\0';
 
