@@ -1,3 +1,9 @@
+2015-02-27  Jon TURNEY  <jon.turney@dronecode.org.uk>
+
+	* windows-nat.c (CONTEXT_DEBUGGER): Remove.
+	(CONTEXT_DEBUGGER_DR): Add CONTEXT_SEGMENTS.  Incorporate flags
+	from CONTEXT_DEBUGGER.
+
 2015-05-13  Joel Brobecker  <brobecker@adacore.com>
 
 	* version.in: Set GDB version number to 7.9.1.
