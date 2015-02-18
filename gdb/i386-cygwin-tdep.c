@@ -27,6 +27,7 @@
 #include "xml-support.h"
 #include "gdbcore.h"
 #include "inferior.h"
+#include "frame-unwind.h"
 
 /* Core file support.  */
 
@@ -223,6 +224,8 @@ static void
 i386_cygwin_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  frame_unwind_append_unwinder (gdbarch, &cygwin_sigwrapper_frame_unwind);
 
   windows_init_abi (info, gdbarch);
 

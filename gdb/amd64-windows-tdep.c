@@ -1171,6 +1171,8 @@ amd64_windows_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
+  frame_unwind_append_unwinder (gdbarch, &cygwin_sigwrapper_frame_unwind);
+
   /* The dwarf2 unwinder (appended very early by i386_gdbarch_init) is
      preferred over the SEH one.  The reasons are:
      - binaries without SEH but with dwarf2 debug info are correcly handled
