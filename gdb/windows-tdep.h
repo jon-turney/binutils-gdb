@@ -32,4 +32,25 @@ extern void windows_xfer_shared_library (const char* so_name,
 
 extern void windows_init_abi (struct gdbarch_info info,
 			      struct gdbarch *gdbarch);
+
+extern const struct frame_unwind cygwin_sigwrapper_frame_unwind;
+
+/* An instruction to match.  */
+struct insn_pattern
+{
+  gdb_byte data;            /* See if it matches this....  */
+  gdb_byte mask;            /* ... with this mask.  */
+};
+
+struct insn_pattern_sequence
+{
+  const struct insn_pattern *pattern;
+  int length;
+};
+
+extern void cygwin_sigwrapper_frame_unwind_set_sigbe_pattern(
+			const struct insn_pattern_sequence *pattern);
+extern void cygwin_sigwrapper_frame_unwind_set_sigdelayed_pattern(
+			 const struct insn_pattern_sequence *pattern);
+
 #endif
