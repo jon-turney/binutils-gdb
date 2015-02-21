@@ -33,6 +33,8 @@
 #include "complaints.h"
 #include "solib.h"
 #include "solib-target.h"
+#include "frame-unwind.h"
+#include "gdbcore.h"
 
 struct cmd_list_element *info_w32_cmdlist;
 
@@ -539,3 +541,140 @@ even if their meaning is unknown."),
      isn't another convenience variable of the same name.  */
   create_internalvar_type_lazy ("_tlb", &tlb_funcs, NULL);
 }
+
+struct cygwin_sigwrapper_frame_cache
+{
+  CORE_ADDR sp;
+  CORE_ADDR pc;
+  CORE_ADDR prev_pc;
+};
+
+/* Fill THIS_CACHE using the cygwin sigwrapper unwinding data
+   for THIS_FRAME.  */
+
+static struct cygwin_sigwrapper_frame_cache *
+cygwin_sigwrapper_frame_cache (struct frame_info *this_frame, void **this_cache)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  struct cygwin_sigwrapper_frame_cache *cache;
+  ptid_t ptid;
+  CORE_ADDR thread_local_base;
+  CORE_ADDR stacktop;
+  CORE_ADDR signalstackptr;
+  CORE_ADDR ra;
+  const int len = gdbarch_addr_bit (gdbarch)/8;
+  gdb_byte buf[len];
+  const int tlsoffset = (gdbarch_ptr_bit (gdbarch) == 64 ? 0x1da0 : 0x24d4);
+
+  if (*this_cache)
+    return *this_cache;
+
+  cache = FRAME_OBSTACK_ZALLOC (struct cygwin_sigwrapper_frame_cache);
+  *this_cache = cache;
+
+  /* Get current PC and SP.  */
+  cache->pc = get_frame_pc (this_frame);
+  get_frame_register (this_frame, gdbarch_sp_regnum(gdbarch), buf);
+  cache->sp = extract_unsigned_integer (buf, len, byte_order);
+
+  /*
+     XXX: this isn't quite correct: if we are in the epilogue, the return
+     address has already been popped from sigstack and is in r11
+  */
+
+  /* Get address of top of stack from thread information block */
+  ptid = inferior_ptid;
+  target_get_tib_address (ptid, &thread_local_base);
+
+  read_memory(thread_local_base + len, buf, len);
+  stacktop = extract_unsigned_integer(buf, len, byte_order);
+
+  if (frame_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"cygwin_sigwrapper_frame_prev_register TEB.stacktop=%s\n",
+			paddress (gdbarch, stacktop ));
+
+  /* Find cygtls, relative to stacktop, and read signalstackptr from cygtls */
+  read_memory(stacktop - tlsoffset, buf, len);
+  signalstackptr = extract_unsigned_integer(buf, len, byte_order);
+
+  if (frame_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"cygwin_sigwrapper_frame_prev_register sigsp=%s\n",
+			paddress (gdbarch, signalstackptr));
+
+  /* Read return address from signal stack */
+  read_memory (signalstackptr - len, buf, len);
+  cache->prev_pc = extract_unsigned_integer (buf, len, byte_order);
+
+  if (frame_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"cygwin_sigwrapper_frame_prev_register ra=%s\n",
+			paddress (gdbarch, cache->prev_pc));
+
+  return cache;
+}
+
+static struct value *
+cygwin_sigwrapper_frame_prev_register (struct frame_info *this_frame, void **this_cache,
+					     int regnum)
+{
+  struct gdbarch *gdbarch = get_frame_arch (this_frame);
+  struct cygwin_sigwrapper_frame_cache *cache =
+    cygwin_sigwrapper_frame_cache (this_frame, this_cache);
+
+  if (frame_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"cygwin_sigwrapper_frame_prev_register %s for pc=%s\n",
+			gdbarch_register_name (gdbarch, regnum),
+			paddress (gdbarch, cache->prev_pc));
+
+  if (regnum == gdbarch_pc_regnum (gdbarch))
+    return frame_unwind_got_address (this_frame, regnum, cache->prev_pc);
+
+  return frame_unwind_got_register (this_frame, regnum, regnum);
+}
+
+static void
+cygwin_sigwrapper_frame_this_id (struct frame_info *this_frame, void **this_cache,
+				      struct frame_id *this_id)
+{
+  struct cygwin_sigwrapper_frame_cache *cache =
+    cygwin_sigwrapper_frame_cache (this_frame, this_cache);
+
+  *this_id = frame_id_build_unavailable_stack (get_frame_func (this_frame));
+}
+
+/* Return whether PC points inside the signal wrapper.   */
+
+static int
+in_sigwrapper_p (CORE_ADDR pc)
+{
+  const char *name;
+
+  find_pc_partial_function (pc, &name, NULL, NULL);
+
+  return name &&
+    ((strcmp(name, "_sigbe") == 0) || (strcmp(name, "__sigbe") == 0));
+}
+
+static int
+cygwin_sigwrapper_frame_sniffer (const struct frame_unwind *self,
+				       struct frame_info *this_frame,
+				       void **this_cache)
+{
+  return in_sigwrapper_p (get_frame_pc (this_frame));
+}
+
+/* Cygwin sigwapper unwinder.  */
+
+const struct frame_unwind cygwin_sigwrapper_frame_unwind =
+{
+  NORMAL_FRAME,
+  default_frame_unwind_stop_reason,
+  &cygwin_sigwrapper_frame_this_id,
+  &cygwin_sigwrapper_frame_prev_register,
+  NULL,
+  &cygwin_sigwrapper_frame_sniffer
+};

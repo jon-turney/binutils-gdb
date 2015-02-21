@@ -32,4 +32,7 @@ extern void windows_xfer_shared_library (const char* so_name,
 
 extern void windows_init_abi (struct gdbarch_info info,
 			      struct gdbarch *gdbarch);
+
+extern const struct frame_unwind cygwin_sigwrapper_frame_unwind;
+
 #endif
