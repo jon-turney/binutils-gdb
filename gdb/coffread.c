@@ -679,7 +679,7 @@ coff_symfile_read (struct objfile *objfile, int symfile_flags)
 	      && (strncmp (name, "__imp_", 6) == 0
 		  || strncmp (name, "_imp_", 5) == 0))
 	    {
-	      const char *name1 = (name[1] == '_' ? &name[7] : &name[6]);
+	      const char *name1 = &name[6];
 	      struct bound_minimal_symbol found;
 
 	      found = lookup_minimal_symbol (name1, NULL, objfile);
