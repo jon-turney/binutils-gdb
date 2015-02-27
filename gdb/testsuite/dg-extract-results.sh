@@ -120,7 +120,7 @@ if [ -z "$TOOL" ]; then
   # If no tool was specified, all specified summary files must be for
   # the same tool.
 
-  CNT=`grep '=== .* tests ===' $SUM_FILES | $AWK '{ print $3 }' | sort -u | wc -l`
+  CNT=`grep -a '=== .* tests ===' $SUM_FILES | $AWK '{ print $3 }' | sort -u | wc -l`
   if [ $CNT -eq 1 ]; then
     TOOL=`grep '=== .* tests ===' $FIRST_SUM | $AWK '{ print $2 }'`
   else
