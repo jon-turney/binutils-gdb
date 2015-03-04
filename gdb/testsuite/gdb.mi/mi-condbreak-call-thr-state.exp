@@ -47,6 +47,10 @@ proc test { variant } {
 
 	set options {debug}
 	if {$variant == "mt" } {
+	    if { [istarget *-*-mingw*] || [istarget *-*-cygwin*] } {
+		unsupported "Target doesn't have sys/sdt.h include file"
+		return
+	    }
 	    lappend options "pthreads"
 	}
 

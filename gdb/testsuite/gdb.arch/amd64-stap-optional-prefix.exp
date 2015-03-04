@@ -22,6 +22,11 @@ if { ![istarget "x86_64-*-*"] || ![is_lp64_target] } {
     return
 }
 
+if { [istarget *-*-mingw*] || [istarget *-*-cygwin*] } {
+    unsupported "Target doesn't have sys/sdt.h include file"
+    return
+}
+
 if { [prepare_for_testing "failed to prepare" $testfile $srcfile] } {
     return -1
 }
