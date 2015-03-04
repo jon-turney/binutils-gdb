@@ -3570,16 +3570,6 @@ proc spawn_wait_for_attach { executable_list } {
 
     sleep 2
 
-    if { [istarget "*-*-cygwin*"] } {
-	for {set i 0} {$i < [llength $pid_list]} {incr i} {
-	    # testpid is the Cygwin PID, GDB uses the Windows PID,
-	    # which might be different due to the way fork/exec works.
-	    set testpid [lindex $pid_list $i]
-	    set testpid [ exec ps -e | gawk "{ if (\$1 == $testpid) print \$4; }" ]
-	    set pid_list [lreplace $pid_list $i $i $testpid]
-	}
-    }
-
     return $pid_list
 }
 
