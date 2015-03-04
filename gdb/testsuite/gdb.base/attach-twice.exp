@@ -18,6 +18,11 @@ if [is_remote target] then {
     return 0
 }
 
+if { [istarget *-*-mingw*] || [istarget *-*-cygwin*] } {
+    unsupported "Target doesn't have sys/ptrace.h include file"
+    return
+}
+
 standard_testfile
 set executable ${testfile}
 

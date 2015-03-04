@@ -27,6 +27,11 @@ if { ![istarget "x86_64-*"] && ![istarget "i?86-*"] } {
     continue
 }
 
+if { [istarget *-*-mingw*] || [istarget *-*-cygwin*] } {
+    unsupported "Target doesn't have sys/sdt.h include file"
+    return
+}
+
 proc compile_stap_bin {exec_name {arg ""}} {
     global srcfile
     global srcdir
