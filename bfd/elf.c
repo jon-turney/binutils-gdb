@@ -1031,17 +1031,28 @@ _bfd_elf_make_section_from_shdr (bfd *abfd,
 		 abfd, name);
 	      return FALSE;
 	    }
-	  if (name[1] != 'z')
-	    {
-	      unsigned int len = strlen (name);
 
-	      new_name = bfd_alloc (abfd, len + 2);
-	      if (new_name == NULL)
-		return FALSE;
-	      new_name[0] = '.';
-	      new_name[1] = 'z';
-	      memcpy (new_name + 2, name + 1, len);
+	  if (newsect->compress_status == COMPRESS_SECTION_DONE)
+	    {
+	      if (name[1] != 'z')
+		{
+		  unsigned int len = strlen (name);
+
+		  new_name = bfd_alloc (abfd, len + 2);
+		  if (new_name == NULL)
+		    return FALSE;
+		  new_name[0] = '.';
+		  new_name[1] = 'z';
+		  memcpy (new_name + 2, name + 1, len);
+		}
 	    }
+	  else
+	    {
+	      (*_bfd_error_handler)
+		(_("%B: section %s not compressed because compressed size is not smaller"),
+		 abfd, name);
+	    }
+
 	  break;
 	case decompress:
 	  if (!bfd_init_section_decompress_status (abfd, newsect))

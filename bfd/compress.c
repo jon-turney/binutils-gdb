@@ -432,7 +432,19 @@ bfd_init_section_compress_status (bfd *abfd ATTRIBUTE_UNUSED,
 					 uncompressed_buffer,
 					 uncompressed_size);
 
-  free (uncompressed_buffer);
+  /* If compression didn't make section smaller, just keep it uncompressed */
+  if (ret && uncompressed_size < sec->size)
+    {
+      free(sec->contents);
+      sec->contents = uncompressed_buffer;
+      sec->size = uncompressed_size;
+      sec->compress_status = COMPRESS_SECTION_NONE;
+    }
+  else
+    {
+      free (uncompressed_buffer);
+    }
+
   return ret;
 #endif
 }
