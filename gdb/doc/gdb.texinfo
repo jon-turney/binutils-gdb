@@ -17463,13 +17463,13 @@ the executable and the debug file came from the same build.
 @item
 The executable contains a @dfn{build ID}, a unique bit string that is
 also present in the corresponding debug info file.  (This is supported
-only on some operating systems, notably those which use the ELF format
-for binary files and the @sc{gnu} Binutils.)  For more details about
-this feature, see the description of the @option{--build-id}
-command-line option in @ref{Options, , Command Line Options, ld.info,
-The GNU Linker}.  The debug info file's name is not specified
-explicitly by the build ID, but can be computed from the build ID, see
-below.
+only on some operating systems, when using the ELF or PE file
+formats formats for binary files and the @sc{gnu} Binutils.)  For more
+details about this feature, see the description of the
+@option{--build-id} command-line option in @ref{Options, , Command
+Line Options, ld.info, The GNU Linker}.  The debug info file's name is
+not specified explicitly by the build ID, but can be computed from the
+build ID, see below.
 @end itemize
 
 Depending on the way the debug info file is specified, @value{GDBN}
