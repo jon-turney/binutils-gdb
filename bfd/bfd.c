@@ -44,6 +44,12 @@ CODE_FRAGMENT
 .    both_direction = 3
 .  };
 .
+.struct bfd_build_id
+.  {
+.    size_t size;
+.    bfd_byte data[1];
+.  };
+.
 .struct bfd
 .{
 .  {* A unique identifier of the BFD  *}
@@ -309,6 +315,9 @@ CODE_FRAGMENT
 .  {* Set if only required symbols should be added in the link hash table for
 .     this object.  Used by VMS linkers.  *}
 .  unsigned int selective_search : 1;
+.
+.  {* For input BFDs, the build ID, if the object has one. *}
+.  const struct bfd_build_id *build_id;
 .};
 .
 .{* See note beside bfd_set_section_userdata.  *}
