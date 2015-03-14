@@ -111,6 +111,8 @@ build_id_to_debug_bfd (size_t build_id_len, const bfd_byte *build_id)
 	s += sprintf (s, "%02x", (unsigned) *data++);
       strcpy (s, ".debug");
 
+      fprintf_unfiltered (gdb_stdlog, "build_id_to_debug_bfd: checking for %s\n", link);
+
       /* lrealpath() is expensive even for the usually non-existent files.  */
       if (access (link, F_OK) == 0)
 	filename = lrealpath (link);
