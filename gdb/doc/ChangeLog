@@ -1,3 +1,8 @@
+2015-03-14  Jon TURNEY  <jon.turney@dronecode.org.uk>
+
+	* gdb.texinfo (Separate Debug Files): Document that COFF is also
+	supported.
+
 2014-07-26  Doug Evans  <xdje42@gmail.com>
 
 	PR guile/17177

@@ -1,3 +1,15 @@
+2015-03-14  Jon TURNEY  <jon.turney@dronecode.org.uk>
+
+	* elf-bfd.h : Remove struct elf_build_id.
+	* bfd.c : Add struct bfd_build_id.
+	* bfd-in2.h: Regenerate.
+	* elf.c (elfobj_grok_gnu_build_id): Update to use bfd_build_id.
+	* libpei.h: Add protoype and macros for
+	bfd_XXi_slurp_codeview_record.
+	* peXXigen.c (_bfd_XXi_slurp_codeview_record): Make public
+	* peicode.h (pe_bfd_read_buildid): Add.
+	(pe_bfd_object_p): Use pe_bfd_read_buildid().
+
 2014-12-05  H.J. Lu  <hongjiu.lu@intel.com>
 
 	* elf64-x86-64.c (bfd_elf32_get_synthetic_symtab): New.
