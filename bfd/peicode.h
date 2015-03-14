@@ -1303,14 +1303,21 @@ pe_bfd_read_buildid(bfd *abfd)
           CODEVIEW_INFO *cvinfo = (CODEVIEW_INFO *) buffer;
 
           /* The debug entry doesn't have to have to be in a section,
-	     in which case AddressOfRawData is 0, so always use PointerToRawData.  */
-          if (_bfd_XXi_slurp_codeview_record (abfd, (file_ptr) idd.PointerToRawData,
+	     in which case AddressOfRawData is 0, so always use PointerToRawData.
+          */
+          if (_bfd_XXi_slurp_codeview_record (abfd,
+                                              (file_ptr) idd.PointerToRawData,
                                               idd.SizeOfData, cvinfo))
             {
-              struct pe_tdata *tdata = abfd->tdata.pe_obj_data;
-              tdata->build_id_in = bfd_alloc(abfd, sizeof(struct pe_build_id) + cvinfo->SignatureLength);
-              tdata->build_id_in->size = cvinfo->SignatureLength;
-              memcpy(tdata->build_id_in->data,  cvinfo->Signature, cvinfo->SignatureLength);
+              struct bfd_build_id* build_id = bfd_alloc(abfd,
+                         sizeof(struct bfd_build_id) + cvinfo->SignatureLength);
+              if (build_id)
+                {
+                  build_id->size = cvinfo->SignatureLength;
+                  memcpy(build_id->data,  cvinfo->Signature,
+                         cvinfo->SignatureLength);
+                  abfd->build_id = build_id;
+                }
             }
           break;
         }

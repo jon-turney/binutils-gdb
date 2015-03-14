@@ -19,9 +19,6 @@
 
 #include "defs.h"
 #include "bfd.h"
-#include "elf-bfd.h"
-#include "coff/internal.h"
-#include "libcoff.h"
 #include "gdb_bfd.h"
 #include "build-id.h"
 #include <string.h>
@@ -30,43 +27,17 @@
 #include "objfiles.h"
 #include "filenames.h"
 
-/* XXX: push this into bfd interface ??? */
-struct build_id
-{
-  size_t size;
-  bfd_byte data[1];
-};
-
 /* Locate NT_GNU_BUILD_ID from ABFD and return its content.  */
 
-static const struct build_id *
+static const struct bfd_build_id *
 build_id_bfd_get (bfd *abfd)
 {
   if (!bfd_check_format (abfd, bfd_object))
     return NULL;
 
-  if ((bfd_get_flavour (abfd) == bfd_target_elf_flavour) &&
-      (elf_tdata (abfd)->build_id != NULL))
-      /* Although this is ELF_specific, it is safe to do in generic
-	 code because it does not rely on any ELF-specific symbols at
-	 link time, and if the ELF code is not available in BFD, then
-	 ABFD will not have the ELF flavour.  */
+  if (abfd->build_id != NULL)
     {
-      int size = elf_tdata (abfd)->build_id->size;
-      struct build_id *buildid = malloc(sizeof(struct build_id) + size);
-      buildid->size = size;
-      memcpy(buildid->data, elf_tdata (abfd)->build_id->data, size);
-      return buildid;
-    }
-
-  if ((bfd_get_flavour (abfd) == bfd_target_coff_flavour) &&
-    (pe_data (abfd)->build_id_in != NULL))
-    {
-      int size = pe_data (abfd)->build_id_in->size;
-      struct build_id *buildid = malloc(sizeof(struct build_id) + size);
-      buildid->size = size;
-      memcpy(buildid->data, pe_data (abfd)->build_id_in->data, size);
-      return buildid;
+      return abfd->build_id;
     }
 
   /* No build-id */
@@ -78,7 +49,7 @@ build_id_bfd_get (bfd *abfd)
 int
 build_id_verify (bfd *abfd, size_t check_len, const bfd_byte *check)
 {
-  const struct build_id *found;
+  const struct bfd_build_id *found;
   int retval = 0;
 
   found = build_id_bfd_get (abfd);
@@ -92,8 +63,6 @@ build_id_verify (bfd *abfd, size_t check_len, const bfd_byte *check)
 	     bfd_get_filename (abfd));
   else
     retval = 1;
-
-  free((void *)found);
 
   return retval;
 }
@@ -171,7 +140,7 @@ build_id_to_debug_bfd (size_t build_id_len, const bfd_byte *build_id)
 char *
 find_separate_debug_file_by_buildid (struct objfile *objfile)
 {
-  const struct build_id *build_id;
+  const struct bfd_build_id *build_id;
 
   build_id = build_id_bfd_get (objfile->obfd);
   if (build_id != NULL)
@@ -179,7 +148,6 @@ find_separate_debug_file_by_buildid (struct objfile *objfile)
       bfd *abfd;
 
       abfd = build_id_to_debug_bfd (build_id->size, build_id->data);
-      free((void *)build_id);
 
       /* Prevent looping on a stripped .debug file.  */
       if (abfd != NULL

@@ -108,13 +108,6 @@ typedef struct coff_tdata
   char *go32stub;
 } coff_data_type;
 
-/* build-id info for input BFDs.  */
-struct pe_build_id
-{
-  size_t size;
-  bfd_byte data[1];
-};
-
 /* Tdata for pe image files.  */
 typedef struct pe_tdata
 {
@@ -134,7 +127,6 @@ typedef struct pe_tdata
     const char *style;
     asection *sec;
   } build_id;
-  struct pe_build_id *build_id_in;
 } pe_data_type;
 
 #define pe_data(bfd)		((bfd)->tdata.pe_obj_data)
