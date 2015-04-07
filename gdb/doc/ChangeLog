@@ -1,3 +1,8 @@
+2015-04-07  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* gdb.texinfo (Separate Debug Files): Document that PE is also
+	supported.
+
 2015-05-12  Doug Evans  <dje@google.com>
 
 	* python.texi (Xmethod API) <gdb.XMethodWorker.get_result_type>:

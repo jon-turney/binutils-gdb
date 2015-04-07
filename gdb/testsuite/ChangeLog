@@ -1,3 +1,10 @@
+2015-04-07  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* gdb.base/sepdebug.exp: Add EXEEXT where needed.
+	* lib/gdb.exp (get_build_id): Teach how to extract build-id from a
+	PE file.
+	* lib/future.exp (gdb_find_objdump): Add gdb_find_objdump.
+
 2015-05-12  Doug Evans  <dje@google.com>
 
 	* gdb.python/py-xmethods.exp: Add ptype tests.
