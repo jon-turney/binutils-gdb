@@ -1,3 +1,8 @@
+2015-06-10  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* gdb.texinfo (Separate Debug Files): Document that PE is also
+	supported.
+
 2015-03-31  Sergio Durigan Junior  <sergiodj@redhat.com>
 
 	PR corefiles/16092
