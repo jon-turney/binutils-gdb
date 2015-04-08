@@ -118,7 +118,7 @@ static COORD WINAPI (*GetConsoleFontSize) (HANDLE, DWORD);
 #   define bad_GetModuleFileNameEx bad_GetModuleFileNameExW
 #endif
 
-static int have_saved_context;	/* True if we've saved context from a
+static int have_saved_context;	/* Non-zero thread id if we saved context from a
 				   cygwin signal.  */
 static CONTEXT saved_context;	/* Containes the saved context from a
 				   cygwin signal.  */
@@ -301,7 +301,8 @@ thread_rec (DWORD id, int get_context)
       {
 	if (!th->suspended && get_context)
 	  {
-	    if (get_context > 0 && id != current_event.dwThreadId)
+	    if (get_context > 0 && id != current_event.dwThreadId
+		&& id != have_saved_context)
 	      {
 		if (SuspendThread (th->h) == (DWORD) -1)
 		  {
@@ -849,8 +850,12 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 					 &saved_context,
 					 __COPY_CONTEXT_SIZE, &n)
 		   && n == __COPY_CONTEXT_SIZE)
-	    have_saved_context = 1;
-	  current_event.dwThreadId = retval;
+	    {
+	      have_saved_context = retval;
+	      saved_context.ContextFlags = 0;  /* Don't attempt to call SetContext */
+	    }
+	  else
+	    retval = 0;
 	}
     }
 #endif
@@ -1330,7 +1335,6 @@ get_windows_debug_event (struct target_ops *ops,
   event_code = current_event.dwDebugEventCode;
   ourstatus->kind = TARGET_WAITKIND_SPURIOUS;
   th = NULL;
-  have_saved_context = 0;
 
   switch (event_code)
     {
@@ -1502,7 +1506,7 @@ get_windows_debug_event (struct target_ops *ops,
     {
       inferior_ptid = ptid_build (current_event.dwProcessId, 0,
 				  retval);
-      current_thread = th ?: thread_rec (current_event.dwThreadId, TRUE);
+      current_thread = th ?: thread_rec (retval, TRUE);
     }
 
 out:
