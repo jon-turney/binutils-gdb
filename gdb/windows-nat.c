@@ -301,7 +301,8 @@ thread_rec (DWORD id, int get_context)
       {
 	if (!th->suspended && get_context)
 	  {
-	    if (get_context > 0 && id != current_event.dwThreadId)
+	    if (get_context > 0 && id != current_event.dwThreadId
+		&& id != signal_thread_id)
 	      {
 		if (SuspendThread (th->h) == (DWORD) -1)
 		  {
@@ -852,8 +853,14 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 					 &saved_context,
 					 __COPY_CONTEXT_SIZE, &n)
 		   && n == __COPY_CONTEXT_SIZE)
-	    signal_thread_id = retval;
-	  current_event.dwThreadId = retval;
+	    {
+	      signal_thread_id = retval;
+	      /* We didn't get this context with GetThreadContext, so we
+		 shouldn't write it to the inferior with SetThreadContext */
+	      saved_context.ContextFlags = 0;
+	    }
+	  else
+	    retval = 0;
 	}
     }
 #endif
@@ -1333,7 +1340,6 @@ get_windows_debug_event (struct target_ops *ops,
   event_code = current_event.dwDebugEventCode;
   ourstatus->kind = TARGET_WAITKIND_SPURIOUS;
   th = NULL;
-  signal_thread_id = 0;
 
   switch (event_code)
     {
@@ -1507,7 +1513,7 @@ get_windows_debug_event (struct target_ops *ops,
 				  thread_id);
       current_thread = th;
       if (!current_thread)
-	current_thread = thread_rec (current_event.dwThreadId, TRUE);
+	current_thread = thread_rec (thread_id, TRUE);
     }
 
 out:
