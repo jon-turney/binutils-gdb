@@ -1,3 +1,11 @@
+2015-04-11  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* windows-nat.c (thread_rec): Don't retrieve context if we have a
+	saved one.
+	(handle_output_debug_string): Mark signal context as not to be
+	written to inferior by windows_continue() or windows_resume().
+	(get_windows_debug_event): Don't clear any saved context.
+
 2015-04-14  Jon Turney  <jon.turney@dronecode.org.uk>
 
 	* windows-nat.c : Replace have_saved_context with signal_thread_id
