@@ -1,3 +1,8 @@
+2015-04-14  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* windows-nat.c : Replace have_saved_context with signal_thread_id
+	throughout.
+
 2015-04-19  Jon Turney  <jon.turney@dronecode.org.uk>
 
 	* windows-nat.c (handle_output_debug_string): Clear ContextFlags
