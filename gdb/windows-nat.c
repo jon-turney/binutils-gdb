@@ -118,8 +118,8 @@ static COORD WINAPI (*GetConsoleFontSize) (HANDLE, DWORD);
 #   define bad_GetModuleFileNameEx bad_GetModuleFileNameExW
 #endif
 
-static int have_saved_context;	/* True if we've saved context from a
-				   cygwin signal.  */
+static DWORD signal_thread_id;	/* Non-zero thread id if we have a saved context
+				   from a cygwin signal.  */
 static CONTEXT saved_context;	/* Containes the saved context from a
 				   cygwin signal.  */
 
@@ -438,7 +438,7 @@ do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
   if (current_thread->reload_context)
     {
 #ifdef __COPY_CONTEXT_SIZE
-      if (have_saved_context)
+      if (signal_thread_id)
 	{
 	  /* Lie about where the program actually is stopped since
 	     cygwin has informed us that we should consider the signal
@@ -446,7 +446,7 @@ do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
 	     "saved_context.  */
 	  memcpy (&current_thread->context, &saved_context,
 		  __COPY_CONTEXT_SIZE);
-	  have_saved_context = 0;
+	  signal_thread_id = 0;
 	}
       else
 #endif
@@ -858,7 +858,7 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 					 &saved_context,
 					 __COPY_CONTEXT_SIZE, &n)
 		   && n == __COPY_CONTEXT_SIZE)
-	    have_saved_context = 1;
+	    signal_thread_id = retval;
 	}
     }
 #endif
@@ -1346,7 +1346,7 @@ get_windows_debug_event (struct target_ops *ops,
   event_code = current_event.dwDebugEventCode;
   ourstatus->kind = TARGET_WAITKIND_SPURIOUS;
   th = NULL;
-  have_saved_context = 0;
+  signal_thread_id = 0;
 
   switch (event_code)
     {
