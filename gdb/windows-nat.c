@@ -1173,6 +1173,10 @@ windows_continue (DWORD continue_status, int id, int killed)
 			    current_event.dwThreadId,
 			    continue_status);
 
+  if (!res)
+    error (_("ContinueDebugEvent failed, GetLastError = %u"),
+	   (unsigned) GetLastError ());
+
   debug_registers_changed = 0;
   return res;
 }
