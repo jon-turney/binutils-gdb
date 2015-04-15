@@ -303,6 +303,8 @@ thread_rec (DWORD id, int get_context)
 	  {
 	    if (get_context > 0 && id != current_event.dwThreadId)
 	      {
+		DEBUG_EXEC(("SuspendThread tid=0x%x\n", id));
+
 		if (SuspendThread (th->h) == (DWORD) -1)
 		  {
 		    DWORD err = GetLastError ();
@@ -813,7 +815,11 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 	&s, 1024, 0)
       || !s || !*s)
     /* nothing to do */;
-  else if (!startswith (s, _CYGWIN_SIGNAL_STRING))
+  else
+    {
+      DEBUG_EVENTS (("gdb: %s\n", s));
+
+      if (!startswith (s, _CYGWIN_SIGNAL_STRING))
     {
 #ifdef __CYGWIN__
       if (!startswith (s, "cYg"))
@@ -853,6 +859,7 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 	}
     }
 #endif
+    }
 
   if (s)
     xfree (s);
@@ -1151,7 +1158,10 @@ windows_continue (DWORD continue_status, int id, int killed)
 	    th->context.ContextFlags = 0;
 	  }
 	if (th->suspended > 0)
-	  (void) ResumeThread (th->h);
+	  {
+	    DEBUG_EXEC(("ResumeThread tid=0x%x\n", th->id));
+	    (void) ResumeThread (th->h);
+	  }
 	th->suspended = 0;
       }
 
@@ -1242,7 +1252,7 @@ windows_resume (struct target_ops *ops,
 
   last_sig = GDB_SIGNAL_0;
 
-  DEBUG_EXEC (("gdb: windows_resume (pid=%d, tid=%ld, step=%d, sig=%d);\n",
+  DEBUG_EXEC (("gdb: windows_resume (pid=%d, tid=%lx, step=%d, sig=%d);\n",
 	       ptid_get_pid (ptid), ptid_get_tid (ptid), step, sig));
 
   /* Get context for currently selected thread.  */
