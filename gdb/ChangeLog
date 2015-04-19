@@ -1,3 +1,9 @@
+2015-04-19  Jon Turney  <jon.turney@dronecode.org.uk>
+
+	* windows-nat.c (handle_output_debug_string): Clear ContextFlags
+	for a Cygwin signal context, so it will not to be written to
+	the inferior by windows_continue() or windows_resume().
+
 2015-04-16  Jon Turney  <jon.turney@dronecode.org.uk>
 
 	* windows-nat.c (handle_output_debug_string): Don't change

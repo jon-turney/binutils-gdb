@@ -849,7 +849,12 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 					 &saved_context,
 					 __COPY_CONTEXT_SIZE, &n)
 		   && n == __COPY_CONTEXT_SIZE)
-	    have_saved_context = 1;
+	    {
+	      have_saved_context = 1;
+	      /* We didn't get this context with GetThreadContext, so we
+		 shouldn't write it to the inferior with SetThreadContext */
+	      saved_context.ContextFlags = 0;
+	    }
 	}
     }
 #endif
