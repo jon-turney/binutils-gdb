@@ -299,9 +299,17 @@ thread_rec (DWORD id, int get_context)
   for (th = &thread_head; (th = th->next) != NULL;)
     if (th->id == id)
       {
+	DEBUG_EXEC(("thread_rec (tid=%lx, get_context %d, event tid=%lx, signal tid=%lx)",
+		   (unsigned long)id, get_context,
+		   (unsigned long)current_event.dwThreadId,
+		    (unsigned long)signal_thread_id));
+	if (th->suspended == 1)
+	  DEBUG_EXEC(("thread_rec tid=0x%x is already suspended.",
+		      (unsigned int)id));
 	if (!th->suspended && get_context)
 	  {
-	    if (get_context > 0 && id != current_event.dwThreadId)
+	    if (get_context > 0 && id != current_event.dwThreadId
+		&& id != signal_thread_id)
 	      {
 		DEBUG_EXEC(("SuspendThread tid=0x%x\n", id));
 
@@ -320,10 +328,16 @@ thread_rec (DWORD id, int get_context)
 		    th->suspended = -1;
 		  }
 		else
-		  th->suspended = 1;
+		  {
+		    DEBUG_EXEC(("thread_rec tid=0x%lx suspended.",
+				(unsigned long)id));
+		    th->suspended = 1;
+		  }
 	      }
 	    else if (get_context < 0)
 	      th->suspended = -1;
+	    else
+	      DEBUG_EXEC(("thread_rec doing nothing."));
 	    th->reload_context = 1;
 	  }
 	return th;
@@ -434,9 +448,12 @@ do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
 
   if (current_thread->reload_context)
     {
+      DEBUG_EXEC (("gdb: reload context\n"));
 #ifdef __COPY_CONTEXT_SIZE
       if (signal_thread_id)
 	{
+	  DEBUG_EXEC (("gdb: using saved signal context\n"));
+
 	  /* Lie about where the program actually is stopped since
 	     cygwin has informed us that we should consider the signal
 	     to have occurred at another location which is stored in
@@ -465,6 +482,10 @@ do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
 	    }
 	}
       current_thread->reload_context = 0;
+    }
+  else
+    {
+      DEBUG_EXEC (("gdb: no need to reload context\n"));
     }
 
   if (r == I387_FISEG_REGNUM (tdep))
@@ -502,7 +523,11 @@ windows_fetch_inferior_registers (struct target_ops *ops,
   /* Check if current_thread exists.  Windows sometimes uses a non-existent
      thread id in its events.  */
   if (current_thread)
-    do_windows_fetch_inferior_registers (regcache, r);
+    {
+      DEBUG_EXEC(("windows_fetch_inferior_registers: tid=%lx signal_thread_id=%lx",
+		  ptid_get_tid (inferior_ptid), (unsigned long)signal_thread_id));
+      do_windows_fetch_inferior_registers (regcache, r);
+    }
 }
 
 static void
@@ -1151,6 +1176,7 @@ windows_continue (DWORD continue_status, int id, int killed)
 	if (th->context.ContextFlags)
 	  {
 	    DWORD ec = 0;
+	    DEBUG_EXEC(("windows_continue: SetThreadContext for tid=0x%x\n", th->id));
 
 	    if (GetExitCodeThread (th->h, &ec)
 		&& ec == STILL_ACTIVE)
@@ -1162,6 +1188,11 @@ windows_continue (DWORD continue_status, int id, int killed)
 	      }
 	    th->context.ContextFlags = 0;
 	  }
+	else
+	  {
+	    DEBUG_EXEC(("windows_continue: Not SetThreadContext for tid=0x%x\n", th->id));
+	  }
+	
 	if (th->suspended > 0)
 	  {
 	    DEBUG_EXEC(("ResumeThread tid=0x%x\n", th->id));
@@ -1276,6 +1307,7 @@ windows_resume (struct target_ops *ops,
 
       if (th->context.ContextFlags)
 	{
+	  DEBUG_EXEC(("windows_resume: SetThreadContext for tid=0x%x\n", th->id));
 	  if (debug_registers_changed)
 	    {
 	      th->context.Dr0 = dr[0];
@@ -1287,6 +1319,10 @@ windows_resume (struct target_ops *ops,
 	    }
 	  CHECK (SetThreadContext (th->h, &th->context));
 	  th->context.ContextFlags = 0;
+	}
+      else
+	{
+	  DEBUG_EXEC(("windows_resume: Not SetThreadContext for tid=0x%x\n", th->id));
 	}
     }
 
