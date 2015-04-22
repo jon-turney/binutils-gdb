@@ -1303,6 +1303,11 @@ windows_resume (struct target_ops *ops,
 	  windows_fetch_inferior_registers (ops, regcache,
 					    gdbarch_ps_regnum (gdbarch));
 	  th->context.EFlags |= FLAG_TRACE_BIT;
+
+	  if (!th->context.ContextFlags)
+	    {
+	      warning (_("windows_resume: wanted to set single step bit, but ContextFlags is clear"));
+	    }
 	}
 
       if (th->context.ContextFlags)
