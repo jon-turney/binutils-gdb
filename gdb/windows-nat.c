@@ -186,14 +186,13 @@ typedef struct windows_thread_info_struct
     char *name;
     int suspended;
     int reload_context;
-    CONTEXT context;
+    CONTEXT signal_context;
+    CONTEXT actual_context;
     STACKFRAME sf;
   }
 windows_thread_info;
 
 static windows_thread_info thread_head;
-
-/* The process and thread handles for the above context.  */
 
 static DEBUG_EVENT current_event;	/* The current debug event from
 					   WaitForDebugEvent */
@@ -301,7 +300,7 @@ thread_rec (DWORD id, int get_context)
       {
 	if (!th->suspended && get_context)
 	  {
-	    if (get_context > 0 && id != current_event.dwThreadId)
+	    if (get_context > 0)
 	      {
 		if (SuspendThread (th->h) == (DWORD) -1)
 		  {
@@ -355,16 +354,17 @@ windows_add_thread (ptid_t ptid, HANDLE h, void *tlb)
   if (debug_registers_used)
     {
       /* Only change the value of the debug registers.  */
-      th->context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-      CHECK (GetThreadContext (th->h, &th->context));
-      th->context.Dr0 = dr[0];
-      th->context.Dr1 = dr[1];
-      th->context.Dr2 = dr[2];
-      th->context.Dr3 = dr[3];
-      th->context.Dr6 = DR6_CLEAR_VALUE;
-      th->context.Dr7 = dr[7];
-      CHECK (SetThreadContext (th->h, &th->context));
-      th->context.ContextFlags = 0;
+      CONTEXT context;
+      context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+      CHECK (GetThreadContext (th->h, &context));
+      context.Dr0 = dr[0];
+      context.Dr1 = dr[1];
+      context.Dr2 = dr[2];
+      context.Dr3 = dr[3];
+      context.Dr6 = DR6_CLEAR_VALUE;
+      context.Dr7 = dr[7];
+      CHECK (SetThreadContext (th->h, &context));
+      context.ContextFlags = 0;
     }
   return th;
 }
@@ -421,7 +421,7 @@ windows_delete_thread (ptid_t ptid, DWORD exit_code)
 static void
 do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
 {
-  char *context_offset = ((char *) &current_thread->context) + mappings[r];
+  char *context_offset;
   struct gdbarch *gdbarch = get_regcache_arch (regcache);
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
   long l;
@@ -439,31 +439,42 @@ do_windows_fetch_inferior_registers (struct regcache *regcache, int r)
 	     cygwin has informed us that we should consider the signal
 	     to have occurred at another location which is stored in
 	     "saved_context.  */
-	  memcpy (&current_thread->context, &saved_context,
+	  memcpy (&current_thread->signal_context, &saved_context,
 		  __COPY_CONTEXT_SIZE);
 	  have_saved_context = 0;
 	}
-      else
 #endif
+      else
+	{
+	  current_thread->signal_context.ContextFlags = 0;
+	}
+
 	{
 	  windows_thread_info *th = current_thread;
-	  th->context.ContextFlags = CONTEXT_DEBUGGER_DR;
-	  CHECK (GetThreadContext (th->h, &th->context));
+	  th->actual_context.ContextFlags = CONTEXT_DEBUGGER_DR;
+	  CHECK (GetThreadContext (th->h, &th->actual_context));
 	  /* Copy dr values from that thread.
 	     But only if there were not modified since last stop.
 	     PR gdb/2388 */
 	  if (!debug_registers_changed)
 	    {
-	      dr[0] = th->context.Dr0;
-	      dr[1] = th->context.Dr1;
-	      dr[2] = th->context.Dr2;
-	      dr[3] = th->context.Dr3;
-	      dr[6] = th->context.Dr6;
-	      dr[7] = th->context.Dr7;
+	      dr[0] = th->actual_context.Dr0;
+	      dr[1] = th->actual_context.Dr1;
+	      dr[2] = th->actual_context.Dr2;
+	      dr[3] = th->actual_context.Dr3;
+	      dr[6] = th->actual_context.Dr6;
+	      dr[7] = th->actual_context.Dr7;
 	    }
 	}
       current_thread->reload_context = 0;
     }
+
+  /* Satisfy register value requests from signal context if we have one,
+     otherwise actual context */
+  if (current_thread->signal_context.ContextFlags)
+    context_offset; = ((char *) &current_thread->signal_context) + mappings[r];
+  else
+    context_offset; = ((char *) &current_thread->actual_context) + mappings[r];
 
   if (r == I387_FISEG_REGNUM (tdep))
     {
@@ -510,7 +521,7 @@ do_windows_store_inferior_registers (const struct regcache *regcache, int r)
     /* Windows sometimes uses a non-existent thread id in its events.  */;
   else if (r >= 0)
     regcache_raw_collect (regcache, r,
-			  ((char *) &current_thread->context) + mappings[r]);
+			  ((char *) &current_thread->actual_context) + mappings[r]);
   else
     {
       for (r = 0; r < gdbarch_num_regs (get_regcache_arch (regcache)); r++)
@@ -948,22 +959,22 @@ display_selectors (char * args, int from_tty)
 
       puts_filtered ("Selector $cs\n");
       display_selector (current_thread->h,
-	current_thread->context.SegCs);
+	current_thread->actual_context.SegCs);
       puts_filtered ("Selector $ds\n");
       display_selector (current_thread->h,
-	current_thread->context.SegDs);
+	current_thread->actual_context.SegDs);
       puts_filtered ("Selector $es\n");
       display_selector (current_thread->h,
-	current_thread->context.SegEs);
+	current_thread->actual_context.SegEs);
       puts_filtered ("Selector $ss\n");
       display_selector (current_thread->h,
-	current_thread->context.SegSs);
+	current_thread->actual_context.SegSs);
       puts_filtered ("Selector $fs\n");
       display_selector (current_thread->h,
-	current_thread->context.SegFs);
+	current_thread->actual_context.SegFs);
       puts_filtered ("Selector $gs\n");
       display_selector (current_thread->h,
-	current_thread->context.SegGs);
+	current_thread->actual_context.SegGs);
     }
   else
     {
@@ -1128,27 +1139,27 @@ windows_continue (DWORD continue_status, int id, int killed)
       {
 	if (debug_registers_changed)
 	  {
-	    th->context.ContextFlags |= CONTEXT_DEBUG_REGISTERS;
-	    th->context.Dr0 = dr[0];
-	    th->context.Dr1 = dr[1];
-	    th->context.Dr2 = dr[2];
-	    th->context.Dr3 = dr[3];
-	    th->context.Dr6 = DR6_CLEAR_VALUE;
-	    th->context.Dr7 = dr[7];
+	    th->actual_context.ContextFlags |= CONTEXT_DEBUG_REGISTERS;
+	    th->actual_context.Dr0 = dr[0];
+	    th->actual_context.Dr1 = dr[1];
+	    th->actual_context.Dr2 = dr[2];
+	    th->actual_context.Dr3 = dr[3];
+	    th->actual_context.Dr6 = DR6_CLEAR_VALUE;
+	    th->actual_context.Dr7 = dr[7];
 	  }
-	if (th->context.ContextFlags)
+	if (th->actual_context.ContextFlags)
 	  {
 	    DWORD ec = 0;
 
 	    if (GetExitCodeThread (th->h, &ec)
 		&& ec == STILL_ACTIVE)
 	      {
-		BOOL status = SetThreadContext (th->h, &th->context);
+		BOOL status = SetThreadContext (th->h, &th->actual_context);
 
 		if (!killed)
 		  CHECK (status);
 	      }
-	    th->context.ContextFlags = 0;
+	    th->actual_context.ContextFlags = 0;
 	  }
 	if (th->suspended > 0)
 	  (void) ResumeThread (th->h);
@@ -1257,27 +1268,12 @@ windows_resume (struct target_ops *ops,
 	  struct gdbarch *gdbarch = get_regcache_arch (regcache);
 	  windows_fetch_inferior_registers (ops, regcache,
 					    gdbarch_ps_regnum (gdbarch));
-	  th->context.EFlags |= FLAG_TRACE_BIT;
+	  th->actual_context.EFlags |= FLAG_TRACE_BIT;
 
-	  if (!th->context.ContextFlags)
+	  if (!th->actual_context.ContextFlags)
 	    {
 	      warning (_("windows_resume: wanted to set single step bit, but ContextFlags is clear"));
 	    }
-	}
-
-      if (th->context.ContextFlags)
-	{
-	  if (debug_registers_changed)
-	    {
-	      th->context.Dr0 = dr[0];
-	      th->context.Dr1 = dr[1];
-	      th->context.Dr2 = dr[2];
-	      th->context.Dr3 = dr[3];
-	      th->context.Dr6 = DR6_CLEAR_VALUE;
-	      th->context.Dr7 = dr[7];
-	    }
-	  CHECK (SetThreadContext (th->h, &th->context));
-	  th->context.ContextFlags = 0;
 	}
     }
 
