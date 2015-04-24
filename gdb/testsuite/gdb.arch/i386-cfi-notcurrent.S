@@ -45,7 +45,9 @@ f:
 	.cfi_endproc
 .LFE0:
 	.size	f, .-f
+#ifdef __ELF__
 	.type	g, @function
+#endif
 g:
 .LFB1:
 	.cfi_startproc
@@ -64,7 +66,9 @@ g:
 .LFE1:
 	.size	g, .-g
 	.globl	main
+#ifdef __ELF__
 	.type	main, @function
+#endif
 main:
 .LFB2:
 	.cfi_startproc
