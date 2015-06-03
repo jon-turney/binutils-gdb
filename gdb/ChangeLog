@@ -1,5 +1,10 @@
 2015-06-03  Jon Turney  <jon.turney@dronecode.org.uk>
 
+	* windows-nat.c : Consistently use numeric get_context parameter
+	to thread_rec() throughout.
+
+2015-06-03  Jon Turney  <jon.turney@dronecode.org.uk>
+
 	* windows-nat.c (do_windows_fetch_inferior_registers)
 	(handle_output_debug_string): Replace __COPY_CONTEXT_SIZE
 	conditional with __CYGWIN__.

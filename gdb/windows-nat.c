@@ -341,7 +341,7 @@ windows_add_thread (ptid_t ptid, HANDLE h, void *tlb)
 
   id = ptid_get_tid (ptid);
 
-  if ((th = thread_rec (id, FALSE)))
+  if ((th = thread_rec (id, 0)))
     return th;
 
   th = XCNEW (windows_thread_info);
@@ -496,7 +496,7 @@ static void
 windows_fetch_inferior_registers (struct target_ops *ops,
 				  struct regcache *regcache, int r)
 {
-  current_thread = thread_rec (ptid_get_tid (inferior_ptid), TRUE);
+  current_thread = thread_rec (ptid_get_tid (inferior_ptid), 1);
   /* Check if current_thread exists.  Windows sometimes uses a non-existent
      thread id in its events.  */
   if (current_thread)
@@ -523,7 +523,7 @@ static void
 windows_store_inferior_registers (struct target_ops *ops,
 				  struct regcache *regcache, int r)
 {
-  current_thread = thread_rec (ptid_get_tid (inferior_ptid), TRUE);
+  current_thread = thread_rec (ptid_get_tid (inferior_ptid), 1);
   /* Check if current_thread exists.  Windows sometimes uses a non-existent
      thread id in its events.  */
   if (current_thread)
@@ -1252,7 +1252,7 @@ windows_resume (struct target_ops *ops,
 	       ptid_get_pid (ptid), ptid_get_tid (ptid), step, sig));
 
   /* Get context for currently selected thread.  */
-  th = thread_rec (ptid_get_tid (inferior_ptid), FALSE);
+  th = thread_rec (ptid_get_tid (inferior_ptid), 0);
   if (th)
     {
       if (step)
@@ -1513,7 +1513,7 @@ get_windows_debug_event (struct target_ops *ops,
 				  thread_id);
       current_thread = th;
       if (!current_thread)
-	current_thread = thread_rec (thread_id, TRUE);
+	current_thread = thread_rec (thread_id, 1);
     }
 
 out:
@@ -2667,7 +2667,7 @@ windows_thread_alive (struct target_ops *ops, ptid_t ptid)
   gdb_assert (ptid_get_tid (ptid) != 0);
   tid = ptid_get_tid (ptid);
 
-  return WaitForSingleObject (thread_rec (tid, FALSE)->h, 0) == WAIT_OBJECT_0
+  return WaitForSingleObject (thread_rec (tid, 0)->h, 0) == WAIT_OBJECT_0
     ? FALSE : TRUE;
 }
 
