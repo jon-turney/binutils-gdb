@@ -142,8 +142,7 @@ static GetConsoleFontSize_ftype *GetConsoleFontSize;
 #   define bad_GetModuleFileNameEx bad_GetModuleFileNameExW
 #endif
 
-static int have_saved_context;	/* True if we've saved context from a
-				   cygwin signal.  */
+static DWORD  signal_thread_id;	/* Non-zero if we saved context. */
 static CONTEXT saved_context;	/* Containes the saved context from a
 				   cygwin signal.  */
 
@@ -338,7 +337,8 @@ thread_rec (DWORD id, int get_context)
       {
 	if (!th->suspended && get_context)
 	  {
-	    if (get_context > 0 && id != current_event.dwThreadId)
+	    if (get_context > 0 && id != current_event.dwThreadId
+		&& id != signal_thread_id)
 	      {
 		if (SuspendThread (th->h) == (DWORD) -1)
 		  {
@@ -471,7 +471,7 @@ do_windows_fetch_inferior_registers (struct regcache *regcache,
   if (th->reload_context)
     {
 #ifdef __CYGWIN__
-      if (have_saved_context)
+      if (signal_thread_id)
 	{
 	  /* Lie about where the program actually is stopped since
 	     cygwin has informed us that we should consider the signal
@@ -479,7 +479,7 @@ do_windows_fetch_inferior_registers (struct regcache *regcache,
 	     "saved_context.  */
 	  memcpy (&th->context, &saved_context,
 		  __COPY_CONTEXT_SIZE);
-	  have_saved_context = 0;
+	  signal_thread_id = 0;
 	}
       else
 #endif
@@ -871,7 +871,11 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
   else if (!startswith (s, _CYGWIN_SIGNAL_STRING))
     {
 #ifdef __CYGWIN__
-      if (!startswith (s, "cYg"))
+      /* This looks like this is supposed to ignore all other expected Cygwin
+	 debug output (e.g. handle and strace output), but isn't quite right as
+	 strace output might be indicated by any 8 digit hex address. */
+      if (!startswith (s, "cYg") || (strncmp (s + 3, "FFFFFFFF", 8) != 0
+				     && strncmp (s + 3, "std", 3) != 0))
 #endif
 	{
 	  char *p = strchr (s, '\0');
@@ -910,7 +914,12 @@ handle_output_debug_string (struct target_waitstatus *ourstatus)
 					 &saved_context,
 					 __COPY_CONTEXT_SIZE, &n)
 		   && n == __COPY_CONTEXT_SIZE)
-	    have_saved_context = 1;
+	    {
+	      signal_thread_id = retval;
+	      saved_context.ContextFlags = 0;  /* Don't attempt to call SetContext */
+	    }
+	  else
+	    retval = 0;
 	}
     }
 #endif
@@ -1433,7 +1442,6 @@ get_windows_debug_event (struct target_ops *ops,
   event_code = current_event.dwDebugEventCode;
   ourstatus->kind = TARGET_WAITKIND_SPURIOUS;
   th = NULL;
-  have_saved_context = 0;
 
   switch (event_code)
     {
@@ -1608,7 +1616,7 @@ get_windows_debug_event (struct target_ops *ops,
     }
 
 out:
-  return thread_id;
+  return (int) thread_id;
 }
 
 /* Wait for interesting events to occur in the target process.  */
@@ -2894,7 +2902,7 @@ windows_get_tib_address (struct target_ops *self,
 {
   windows_thread_info *th;
 
-  th = thread_rec (ptid_get_tid (ptid), 0);
+  th = thread_rec (ptid_get_tid (ptid), FALSE);
   if (th == NULL)
     return 0;
 
