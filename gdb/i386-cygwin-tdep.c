@@ -26,6 +26,7 @@
 #include "xml-support.h"
 #include "gdbcore.h"
 #include "inferior.h"
+#include "frame-unwind.h"
 
 /* Core file support.  */
 
@@ -204,10 +205,37 @@ i386_cygwin_auto_wide_charset (void)
   return "UTF-16";
 }
 
+static const struct insn_pattern i386_sigbe_bytes[] = {
+  /* movl       $-4,%eax */
+  { 0xb8, 0xff },
+  { 0xfc, 0xff },
+  { 0xff, 0xff },
+  { 0xff, 0xff },
+  { 0xff, 0xff },
+  /* xadd       %eax,$tls::stackptr(%ebx) */
+  { 0x0f, 0xff },
+  { 0xc1, 0xff },
+  { 0x83, 0xff },
+  { 0x00, 0x00 }, /* 4 bytes for tls::stackptr */
+  { 0x00, 0x00 },
+  { 0x00, 0x00 },
+  { 0x00, 0x00 }
+};
+
+#define COUNT(x) (sizeof(x)/sizeof(x[0]))
+
+static const struct insn_pattern_sequence i386_sigbe =
+  {
+    i386_sigbe_bytes, COUNT(i386_sigbe_bytes)
+  };
+
 static void
 i386_cygwin_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  cygwin_sigwrapper_frame_unwind_set_sigbe_pattern (&i386_sigbe);
+  frame_unwind_append_unwinder (gdbarch, &cygwin_sigwrapper_frame_unwind);
 
   windows_init_abi (info, gdbarch);
 
