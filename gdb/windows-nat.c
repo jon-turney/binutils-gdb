@@ -642,13 +642,22 @@ windows_make_so (const char *name, LPVOID load_addr)
   else
     {
       char *rname = realpath (name, NULL);
-      if (rname && strlen (rname) < SO_NAME_MAX_PATH_SIZE)
+      if (rname)
 	{
-	  strcpy (so->so_name, rname);
+	  if (strlen (rname) < SO_NAME_MAX_PATH_SIZE)
+	    strcpy (so->so_name, rname);
+	  else
+	    {
+	      warning (_("dll path \"%s\" too long"), rname);
+	      strcpy (so->so_name, so->so_original_name);
+	    }
 	  free (rname);
 	}
       else
-	error (_("dll path too long"));
+	{
+	  warning (_("dll path for \"%s\" can not be evaluated"), name);
+	  strcpy (so->so_name, so->so_original_name);
+	}
     }
   /* Record cygwin1.dll .text start/end.  */
   p = strchr (so->so_name, '\0') - (sizeof ("/cygwin1.dll") - 1);
