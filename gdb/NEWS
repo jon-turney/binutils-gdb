@@ -1,6 +1,14 @@
 		What has changed in GDB?
 	     (Organized release by release)
 
+*** Changes since GDB 7.11
+
+* Support for thread names on MS-Windows.
+
+  GDB now catches and handles the special exception that programs
+  running on MS-Windows use to assign names to threads in the
+  debugger.
+
 *** Changes in GDB 7.11
 
 * GDB now supports debugging kernel-based threads on FreeBSD.
