@@ -465,6 +465,13 @@ ENABLE_LIBSTDCXX=default)
   noconfigdirs="$noconfigdirs target-libstdc++-v3"
 fi]
 
+AC_ARG_ENABLE(staticlib,
+AS_HELP_STRING([--disable-staticlib],
+  [do not link libstdc++ and libgcc library statically, default is static linking]),
+ENABLE_STATICLIB=$enableval,
+ENABLE_STATICLIB=yes)
+
+
 # If this is accelerator compiler and its target is intelmic we enable
 # target liboffloadmic by default.  If this is compiler with offloading
 # for intelmic we enable host liboffloadmic by default.  Otherwise
@@ -1300,9 +1307,10 @@ if test -z "$LD"; then
   fi
 fi
 
-# Check whether -static-libstdc++ -static-libgcc is supported.
+# If ENABLE_STATICLIB is set for configuration, check whether -static-libstdc++ -static-libgcc is supported
 have_static_libs=no
-if test "$GCC" = yes; then
+if test "$ENABLE_STATICLIB" = yes; then
+ if test "$GCC" = yes; then
   saved_LDFLAGS="$LDFLAGS"
 
   LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"
@@ -1318,6 +1326,7 @@ int main() {}],
   AC_LANG_POP(C++)
 
   LDFLAGS="$saved_LDFLAGS"
+ fi
 fi
 
 ACX_PROG_GNAT
@@ -1633,6 +1642,9 @@ AC_ARG_WITH(stage1-ldflags,
  # trust that they are doing what they want.
  if test "$stage1_libs" = "" -a "$have_static_libs" = yes; then
    stage1_ldflags="-static-libstdc++ -static-libgcc"
+   else
+  # If static lib is disabled.
+   stage1_ldflags=""
  fi])
 AC_SUBST(stage1_ldflags)
 
@@ -1660,8 +1672,11 @@ AC_ARG_WITH(boot-ldflags,
  # In stages 2 and 3, default to linking libstdc++ and libgcc
  # statically.  But if the user explicitly specified the libraries to
  # use, trust that they are doing what they want.
- if test "$poststage1_libs" = ""; then
+ if test "$poststage1_libs" = "" -a "$have_static_libs" = yes; then
    poststage1_ldflags="-static-libstdc++ -static-libgcc"
+   else
+   # If static library linking is disabled.
+   poststage1_ldflags=""
  fi])
 AC_SUBST(poststage1_ldflags)
 

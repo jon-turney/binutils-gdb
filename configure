@@ -757,6 +757,7 @@ enable_libquadmath_support
 enable_libada
 enable_libssp
 enable_libstdcxx
+enable_staticlib
 enable_liboffloadmic
 enable_bootstrap
 with_mpc
@@ -1485,6 +1486,8 @@ Optional Features:
   --enable-libada         build libada directory
   --enable-libssp         build libssp directory
   --disable-libstdcxx     do not build libstdc++-v3 directory
+  --disable-staticlib     do not link libstdc++ and libgcc library statically,
+                          default is static linking
   --enable-liboffloadmic=ARG
                           build liboffloadmic [ARG={no,host,target}]
   --enable-bootstrap      enable bootstrapping [yes if native build]
@@ -3107,6 +3110,15 @@ fi
 if test "${ENABLE_LIBSTDCXX}" = "no" ; then
   noconfigdirs="$noconfigdirs target-libstdc++-v3"
 fi
+
+# Check whether --enable-staticlib was given.
+if test "${enable_staticlib+set}" = set; then :
+  enableval=$enable_staticlib; ENABLE_STATICLIB=$enableval
+else
+  ENABLE_STATICLIB=yes
+fi
+
+
 
 # If this is accelerator compiler and its target is intelmic we enable
 # target liboffloadmic by default.  If this is compiler with offloading
@@ -5005,9 +5017,10 @@ if test -z "$LD"; then
   fi
 fi
 
-# Check whether -static-libstdc++ -static-libgcc is supported.
+# If ENABLE_STATICLIB is set for configuration, check whether -static-libstdc++ -static-libgcc is supported
 have_static_libs=no
-if test "$GCC" = yes; then
+if test "$ENABLE_STATICLIB" = yes; then
+ if test "$GCC" = yes; then
   saved_LDFLAGS="$LDFLAGS"
 
   LDFLAGS="$LDFLAGS -static-libstdc++ -static-libgcc"
@@ -5045,6 +5058,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
   LDFLAGS="$saved_LDFLAGS"
+ fi
 fi
 
 
@@ -5796,6 +5810,9 @@ else
  # trust that they are doing what they want.
  if test "$stage1_libs" = "" -a "$have_static_libs" = yes; then
    stage1_ldflags="-static-libstdc++ -static-libgcc"
+   else
+  # If static lib is disabled.
+   stage1_ldflags=""
  fi
 fi
 
@@ -5830,8 +5847,11 @@ else
  # In stages 2 and 3, default to linking libstdc++ and libgcc
  # statically.  But if the user explicitly specified the libraries to
  # use, trust that they are doing what they want.
- if test "$poststage1_libs" = ""; then
+ if test "$poststage1_libs" = "" -a "$have_static_libs" = yes; then
    poststage1_ldflags="-static-libstdc++ -static-libgcc"
+   else
+   # If static library linking is disabled.
+   poststage1_ldflags=""
  fi
 fi
 
