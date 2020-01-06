@@ -848,15 +848,8 @@ gdb_readline_no_editing_callback (gdb_client_data client_data)
   ui->input_handler (gdb::unique_xmalloc_ptr<char> (result));
 }
 
-
-/* See event-top.h.  */
-
-thread_local void (*thread_local_segv_handler) (int);
-
-static void handle_sigsegv (int sig);
-
 /* Install the SIGSEGV handler.  */
-static void
+void
 install_handle_sigsegv ()
 {
 #if defined (HAVE_SIGACTION)
@@ -875,16 +868,6 @@ install_handle_sigsegv ()
 }
 
 /* Handler for SIGSEGV.  */
-
-static void
-handle_sigsegv (int sig)
-{
-  install_handle_sigsegv ();
-
-  if (thread_local_segv_handler == nullptr)
-    abort ();			/* ARI: abort */
-  thread_local_segv_handler (sig);
-}
 
 
 

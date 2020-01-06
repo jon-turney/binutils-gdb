@@ -1552,6 +1552,23 @@ static thread_local SIGJMP_BUF *gdb_demangle_jmp_buf;
 
 static std::atomic<bool> gdb_demangle_attempt_core_dump;
 
+/* The SIGSEGV handler for this thread, or NULL if there is none.  GDB
+   always installs a global SIGSEGV handler, and then lets threads
+   indicate their interest in handling the signal by setting this
+   thread-local variable.  */
+
+thread_local void (*thread_local_segv_handler) (int);
+
+void
+handle_sigsegv (int sig)
+{
+  install_handle_sigsegv ();
+
+  if (thread_local_segv_handler == nullptr)
+    abort ();			/* ARI: abort */
+  thread_local_segv_handler (sig);
+}
+
 /* Signal handler for gdb_demangle.  */
 
 static void
