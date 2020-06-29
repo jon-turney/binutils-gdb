@@ -10185,10 +10185,19 @@ elfcore_grok_win32pstatus (bfd *abfd, Elf_Internal_Note *note)
       break;
 
     case 3 /* NOTE_INFO_MODULE */:
-      /* Make a ".module/xxxxxxxx" section.  */
+    case 4 /* NOTE_INFO_MODULE64 */:
+      /* Make a ".module/<base_address>" section.  */
       /* module_info.base_address */
-      base_addr = bfd_get_32 (abfd, note->descdata + 4);
-      sprintf (buf, ".module/%08lx", (unsigned long) base_addr);
+      if (type == 3)
+        {
+          base_addr = bfd_get_32 (abfd, note->descdata + 4);
+          sprintf (buf, ".module/%08lx", (unsigned long) base_addr);
+        }
+      else
+        {
+          base_addr = bfd_get_64 (abfd, note->descdata + 4);
+          sprintf (buf, ".module/%016lx", (unsigned long) base_addr);
+        }
 
       len = strlen (buf) + 1;
       name = (char *) bfd_alloc (abfd, len);
