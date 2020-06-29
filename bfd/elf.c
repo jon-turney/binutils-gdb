@@ -10138,9 +10138,6 @@ elfcore_grok_win32pstatus (bfd *abfd, Elf_Internal_Note *note)
   int is_active_thread;
   bfd_vma base_addr;
 
-  if (note->descsz < 728)
-    return TRUE;
-
   if (! CONST_STRNEQ (note->namedata, "win32"))
     return TRUE;
 
@@ -10157,9 +10154,10 @@ elfcore_grok_win32pstatus (bfd *abfd, Elf_Internal_Note *note)
       break;
 
     case 2 /* NOTE_INFO_THREAD */:
-      /* Make a ".reg/999" section.  */
+      /* Make a ".reg/<tid>" section containing the Win32 API thread CONTEXT
+         structure. */
       /* thread_info.tid */
-      sprintf (buf, ".reg/%ld", (long) bfd_get_32 (abfd, note->descdata + 8));
+      sprintf (buf, ".reg/%ld", (long) bfd_get_32 (abfd, note->descdata + 4));
 
       len = strlen (buf) + 1;
       name = (char *) bfd_alloc (abfd, len);
