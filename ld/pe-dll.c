@@ -170,7 +170,9 @@ static struct bfd_section *edata_s, *reloc_s;
 static unsigned char *edata_d, *reloc_d;
 static unsigned char *reloc_d = NULL;
 static size_t edata_sz, reloc_sz = 0;
+#ifndef pe_use_plus
 static int runtime_pseudo_relocs_created = 0;
+#endif
 static bool runtime_pseudp_reloc_v2_init = false;
 
 typedef struct
@@ -1773,7 +1775,7 @@ generate_reloc (bfd *abfd, struct bfd_link_info *info)
   /* This can happen for example when LTO has eliminated all code.  */
   if (total_relocs == 0)
     return;
-  
+
   /* At this point, we have total_relocs relocation addresses in
      reloc_addresses, which are all suitable for the .reloc section.
      We must now create the new sections.  */
@@ -2798,6 +2800,7 @@ make_runtime_pseudo_reloc (const char *name ATTRIBUTE_UNUSED,
   return abfd;
 }
 
+#ifndef pe_use_plus
 /*	.section	.rdata
 	.rva		__pei386_runtime_relocator  */
 
@@ -2841,6 +2844,7 @@ pe_create_runtime_relocator_reference (bfd *parent)
   bfd_make_readable (abfd);
   return abfd;
 }
+#endif
 
 void
 pe_create_import_fixup (arelent *rel, asection *s, bfd_vma addend, char *name,
@@ -2894,11 +2898,15 @@ pe_create_import_fixup (arelent *rel, asection *s, bfd_vma addend, char *name,
 				     link_info.output_bfd);
       add_bfd_to_link (b, bfd_get_filename (b), &link_info);
 
+      /* We think this is entirely useless, but emit a reference to the
+	 relocator on the i386 target, just in case. */
+#ifndef pe_use_plus
       if (runtime_pseudo_relocs_created++ == 0)
 	{
 	  b = pe_create_runtime_relocator_reference (link_info.output_bfd);
 	  add_bfd_to_link (b, bfd_get_filename (b), &link_info);
 	}
+#endif
     }
 
   else if (addend != 0)
